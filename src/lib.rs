@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 // type aliases for ease of reading
 pub type Fields = Vec<String>;
 pub type Exclude = Vec<String>;
@@ -9,7 +7,7 @@ pub type Offset = u128;
 // TODO: write typesafe version later
 pub type WhereRaw = String;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub enum SortOrder {
     #[default]
     Ascending,
@@ -40,7 +38,7 @@ pub struct Query {
 }
 
 impl Query {
-    pub fn New() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
@@ -119,8 +117,7 @@ impl Query {
         }
 
         if let Some(search) = &self.search {
-            let column = search.column.clone().unwrap_or_default();
-            let search = format!(r##"search {} "{}";"##, column, search.query);
+            let search = format!(r##"search "{}";"##, search.query);
             serialized.push_str(&search)
         }
 
@@ -134,7 +131,17 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let actual = Query::New()
+        let expected = vec![
+            "fields a,b,c;",
+            "exclude d,e;",
+            "where b.count >= 14 & a != n;",
+            "limit 8;",
+            "offset 2;",
+            "sort b.count desc;",
+            "search \"test\";",
+        ];
+
+        let actual = Query::new()
             .field("a")
             .field("b")
             .field("c")
@@ -152,6 +159,14 @@ mod tests {
                 query: "test".to_owned(),
             })
             .serialize();
-        panic!("{}", actual)
+
+        for query in expected {
+            assert!(
+                actual.contains(query),
+                "couldn't find: {} \n {}",
+                query,
+                actual
+            )
+        }
     }
 }
